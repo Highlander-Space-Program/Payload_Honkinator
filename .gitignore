@@ -1,0 +1,8 @@
+echo ".pio/
+.vscode/
+.pioenvs/
+.clang_complete
+.idea/
+*.pyc
+*.swp
+.DS_Store" > .gitignore
