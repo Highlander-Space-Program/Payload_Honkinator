@@ -132,8 +132,9 @@ typedef struct __attribute__((packed)) {
   uint16_t co2PPM_e;      //2 bytes
   uint32_t timestamp_e;   //4 bytes unsigned long
   uint8_t currentState_e;  //1 bytes prolly
+  bool pyroEjected_e;     //1 byte
 
-} Entry; //currently 9 bytes = 28 entries per page, 28 entres = 252 bytes ~ 1 page
+} Entry; //currently 10 bytes = 25 entries per page, 25 entres = 250 bytes ~ 1 page
 
 
 void writeEntryBuffToFlash(uint16_t page, Entry* sBuffer, size_t numEntries) {
@@ -183,7 +184,7 @@ void extractFlashPages (uint16_t lastPage) {
 
     Entry* extractedEntries = (Entry*)extractorBuff; //transforms the extractor buffer into an array of structs
 
-    for (int j = 0; j < (252 / sizeof(Entry))  ; j++) {
+    for (int j = 0; j < (250 / sizeof(Entry))  ; j++) {
       Serial.print ("Page "); Serial.print (i);
       Serial.print(", Entry "); Serial.print(j);
       Serial.print(" | Altitude: "); Serial.print(extractedEntries[j].altitude_e);

@@ -29,6 +29,7 @@ Descending
 Landed 
 - Takes finals measurements of altitude and MHZ (use a flag)
 - Stops storing data (and perhaps stop reading it?)
+- Honks horn
 
 
 */
@@ -40,13 +41,13 @@ Landed
 #include "Globals.h"
 
 
-bool stableAltitude (int16_t Alt) {
+bool stableAltitude (int16_t currAlt, int16_t prevAlt) { //+-15ft
     static int stabilityCounter = 0;
 
-    if (Alt < 10) {
+    if ((currAlt <= (15 + prevAlt)) && (currAlt >= (prevAlt - 15) )) {
         stabilityCounter++;
         
-        if (stabilityCounter >= 20) {
+        if (stabilityCounter >= 176) { //appx 1 minute at the same altitude
             return true;
         }
     
@@ -55,7 +56,6 @@ bool stableAltitude (int16_t Alt) {
     }
     return false;
 }
-
 
 
 Transitions checkTransition (int16_t currAlt, int16_t prevAlt){ 
@@ -81,7 +81,7 @@ Transitions checkTransition (int16_t currAlt, int16_t prevAlt){
                 return DESCENT_PASSED_600;
             }
 
-            if (stableAltitude(currAlt)) {
+            if (stableAltitude(currAlt, prevAlt)) {
                 return TOUCHDOWN;
             }
         break;
@@ -105,7 +105,7 @@ void Tick_Payload () {
         readAltitude(&currAltitude);
         getCO2(&ppmCO2);
         timeStamp = getTimeStamp();
-        currEntry = {currAltitude, ppmCO2, timeStamp, uint8_t(currentState)};
+        currEntry = {currAltitude, ppmCO2, timeStamp, uint8_t(currentState), pyroEjected};
     }
 
     currMD = {timeStamp, uint8_t(currentState), uint16_t(currPageNum), eBufIndx, useMD = true};
@@ -131,6 +131,8 @@ void Tick_Payload () {
             digitalWrite(PYROPIN, HIGH);
             delay(20);
             digitalWrite(PYROPIN, LOW);
+            pyroEjected = true;
+
         break;
 
         case TOUCHDOWN:
@@ -229,38 +231,50 @@ void Tick_Payload () {
             //read last data
             //store data + metaData
             //start car horn
-            if (eBufIndx < (sizeof(eBuff) / sizeof(eBuff[0]))) {
-                eBuff[eBufIndx] = currEntry;
-                eBufIndx++;
 
-                //store metaData
-            
-            } else {
-                if (( (currPageNum >= 1) && (currPageNum <= 32750) ) && (eBufIndx > 0)/*between pages 1 and 32,766 && eBuffIndx > 0*/) {
-                    writeEntryBuffToFlash (currPageNum, eBuff, sizeof(eBuff));
-                    eBufIndx = 0;
-                    currPageNum++;
-
+            if (!finalRead) {
+                if (eBufIndx < (sizeof(eBuff) / sizeof(eBuff[0]))) {
                     eBuff[eBufIndx] = currEntry;
                     eBufIndx++;
 
                     //store metaData
+                
+                } else {
+                    if (( (currPageNum >= 1) && (currPageNum <= 32750) ) && (eBufIndx > 0)/*between pages 1 and 32,766 && eBuffIndx > 0*/) {
+                        writeEntryBuffToFlash (currPageNum, eBuff, sizeof(eBuff));
+                        eBufIndx = 0;
+                        currPageNum++;
 
-                } else if (currPageNum >= 32750/*last page*/) {
-                    writeEntryBuffToFlash (32750, eBuff, sizeof(eBuff));
-                    eBufIndx = 0;
+                        eBuff[eBufIndx] = currEntry;
+                        eBufIndx++;
 
-                    eBuff[eBufIndx] = currEntry;
-                    eBufIndx++;
+                        finalRead = true;
 
-                    //store metaData
+                        //store metaData
 
-                }
+                    } else if (currPageNum >= 32750/*last page*/) {
+                        writeEntryBuffToFlash (32750, eBuff, sizeof(eBuff));
+                        eBufIndx = 0;
 
-            } 
-            
-            finalRead = true;
-            writeMetaDataToFlash(&currMD);
+                        eBuff[eBufIndx] = currEntry;
+                        eBufIndx++;
+
+                        finalRead = true;
+
+                        //store metaData
+
+                    }
+
+                } 
+                
+                writeMetaDataToFlash(&currMD);
+            }
+
+            //honk for 2 seconds every 30 seconds
+            delay(30000);
+            digitalWrite(CARHORNPIN, HIGH);
+            delay(2000);
+            digitalWrite(  CARHORNPIN, LOW);
         break;
 
     }

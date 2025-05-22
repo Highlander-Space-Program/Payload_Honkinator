@@ -6,7 +6,7 @@
 #include "Altimeter.h"
 #include "MH-Z19.h"
 
-//State machine structs
+//State machine enums
 enum RocketState {
     ON_PAD = 0,
     ASCENDING = 1,
@@ -28,6 +28,7 @@ enum Transitions {
 //PURE GPIO Pins
 constexpr uint8_t OBLED = 2; //main loop confirms code is running
 constexpr uint8_t PYROPIN = 27; //stateMachine, fires E-MATCH
+constexpr uint8_t CARHORNPIN = 26;
 
 //Serial UART COMMS & Objects
 const uint8_t MH_RX_PIN = 22;
@@ -47,7 +48,7 @@ bool finalRead = false;
 
 
 //Entry stuff
-constexpr size_t ENTRY_BUFFER_SIZE_BYTES = 28;
+constexpr size_t ENTRY_BUFFER_SIZE_BYTES = 25;
 constexpr uint32_t ENTRY_MAX_PAGE = 32750;
 
 Entry eBuff[ENTRY_BUFFER_SIZE_BYTES] = {0};
@@ -58,18 +59,30 @@ uint32_t timeStamp = 0;
 int16_t currAltitude = 0;
 int16_t prevAltitude = 0;
 uint16_t ppmCO2 = 0;
+bool pyroEjected = 0;
 
-Entry currEntry = {currAltitude, ppmCO2, timeStamp, currentState};
+Entry currEntry = {currAltitude, ppmCO2, timeStamp, currentState, pyroEjected};
 metaData currMD = {0}; //checked in setup
 bool useMD;
 
+//Sampling rate stuff
+const uint32_t samplingRate = 340; //ms
+uint32_t lastTick = 0;
+uint32_t now;
+
+//Vairiable intializer
 void initializeVariables() {
     timeStamp = getTimeStamp();
 
-    /*if (checkMetaDataFlag() == true) { //Power cycle event (in flight or whenevr)
+    readAltitude(&currAltitude);
+    prevAltitude = currAltitude;
+        
+    getCO2(&ppmCO2);
 
-        Serial.println ("Recovering Meta Data");
-        Serial.println("");
+    if (checkMetaDataFlag() == true) { //Power cycle event (in flight or whenevr)
+
+        //Serial.println ("Recovering Meta Data");
+        //Serial.println("");
         extractMetaData(&currMD);
         
         extractMetaData(&currMD);
@@ -80,16 +93,16 @@ void initializeVariables() {
         eBufIndx++;
         pyroArmed = currMD.pyroArmed; //check if pyroArmed;
         finalRead = currMD.finalRead; //check if finalRead occurred;
-        
-        readAltitude(&currAltitude);
-        prevAltitude = currAltitude;
-        
-        getCO2(&ppmCO2);
-        
 
-    } else {*/
+        currEntry = {currAltitude, ppmCO2, timeStamp, uint8_t(currentState), pyroEjected};
+
+
+    } else {
         currMD = {0};
-    //}
+        currMD = {timeStamp, uint8_t(currentState), uint16_t(currPageNum), eBufIndx, useMD, pyroArmed, finalRead};
+        currEntry = {currAltitude, ppmCO2, timeStamp, uint8_t(currentState)};
+
+    }
 
 
 }
