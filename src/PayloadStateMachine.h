@@ -35,6 +35,7 @@ Landed
 */
 
 #include<Arduino.h>
+#include <iostream>
 #include "FlashMemory.h"
 #include "MH-Z19.h"
 #include "Altimeter.h"
@@ -47,13 +48,16 @@ bool stableAltitude (int16_t currAlt, int16_t prevAlt) { //+-15ft
     if ((currAlt <= (15 + prevAlt)) && (currAlt >= (prevAlt - 15) )) {
         stabilityCounter++;
         
-        if (stabilityCounter >= 176) { //appx 1 minute at the same altitude
+        if (stabilityCounter >= 29) { //appx 10 seconds at the same altitude
+            Serial.print("stabilityCounter: "); Serial.println(stabilityCounter);
             return true;
         }
     
     } else {
         stabilityCounter = 0 ;
     }
+
+    Serial.print("stabilityCounter: "); Serial.println(stabilityCounter);
     return false;
 }
 
@@ -61,7 +65,7 @@ bool stableAltitude (int16_t currAlt, int16_t prevAlt) { //+-15ft
 Transitions checkTransition (int16_t currAlt, int16_t prevAlt){ 
     switch (currentState) {
         case ON_PAD:
-            if (currAlt > prevAlt + 10) {
+            if (currAlt > prevAlt + 4) {
                 return LAUNCHED;
             }
         break;
@@ -71,19 +75,20 @@ Transitions checkTransition (int16_t currAlt, int16_t prevAlt){
                 return ASCENT_PASSED_600;
             }
 
-            if (currAlt < prevAlt) {
+            if (currAlt < prevAlt + 4) {
                 return APOGEE;
             }
         break;
 
         case DESCENDING:
+            if (stableAltitude(currAlt, prevAlt)) {
+                return TOUCHDOWN;
+            }
+        
             if (pyroArmed && currAlt <= 600) {
                 return DESCENT_PASSED_600;
             }
 
-            if (stableAltitude(currAlt, prevAlt)) {
-                return TOUCHDOWN;
-            }
         break;
 
         case LANDED:
@@ -101,16 +106,58 @@ Transitions checkTransition (int16_t currAlt, int16_t prevAlt){
 //Everything Everywhere All At Once
 void Tick_Payload () {
 
+    Serial.println("");
+    Serial.println("");
+    Serial.println("");
+    Serial.println("Tick Payload started");
+    digitalWrite(OBLED, HIGH);
+
     if (finalRead == 0) {
         readAltitude(&currAltitude);
         getCO2(&ppmCO2);
         timeStamp = getTimeStamp();
-        currEntry = {currAltitude, ppmCO2, timeStamp, uint8_t(currentState), pyroEjected};
+        currEntry.altitude_e      = currAltitude;
+        currEntry.co2PPM_e        = ppmCO2;
+        currEntry.timestamp_e     = timeStamp;
+        currEntry.currentState_e  = uint8_t(currentState);
+        currEntry.pyroEjected_e   = pyroEjected;
+
+        Serial.print("currAltitude: "); Serial.println(currAltitude);
+        Serial.print("prevAltitude: "); Serial.println(prevAltitude);
+        Serial.print("CO2 PPM: "); Serial.println(ppmCO2);
     }
 
-    currMD = {timeStamp, uint8_t(currentState), uint16_t(currPageNum), eBufIndx, useMD = true};
+    Serial.print("Current State: "); Serial.println(currentState);
+    Serial.print("Raw TimeStamp: "); Serial.println(getTimeStamp());
+    
+    
 
-    transition = checkTransition (currAltitude, prevAltitude);
+    std::cout << "currEntry ~ Alt: " << currEntry.altitude_e
+            << "ft,  CO2: " <<  currEntry.co2PPM_e
+            << "PPM,  State: " << int(currEntry.currentState_e)
+            << ",  TS: "  << currEntry.timestamp_e
+            << ",  pyroEjected: "  << currEntry.pyroEjected_e << std::endl;
+
+    currMD.lastTimeStamp = timeStamp;
+    currMD.currentState     = uint8_t(currentState);
+    currMD.currentPageNum = uint16_t(currPageNum);
+    currMD.structCount = eBufIndx;
+    currMD.useMetaData= true;
+    currMD.pyroArmed = pyroArmed;
+    currMD.finalRead = finalRead;
+
+    std::cout << "currMD ~ timeStamp: " << currMD.lastTimeStamp
+            << "ms,  State: " <<  int(currMD.currentState)
+            << ",  pageNum: " << currMD.currentPageNum
+            << ",  structCount: "  << int(currMD.structCount)
+            << ",  pyroArmed: "  << currMD.pyroArmed 
+            << ",  finalRead: "  << currMD.finalRead 
+            << std::endl;
+
+    transition = checkTransition(currAltitude, prevAltitude);
+    Serial.print("Transition evaluated: ");
+    Serial.println(transition);  // Should match your enum values
+
 
     switch (transition) {
         case LAUNCHED:
@@ -161,13 +208,18 @@ void Tick_Payload () {
                 
             
             } else {
-                if ((currPageNum >= 1) && (currPageNum <= 32750)/*between pages 1 and 32,750 */) {
+                if ((currPageNum >= 1) && (currPageNum <= 32749)/*between pages 1 and 32,750 */) {
                     writeEntryBuffToFlash (currPageNum, eBuff, sizeof(eBuff));
                     eBufIndx = 0;
                     currPageNum++;
 
                     eBuff[eBufIndx] = currEntry;
                     eBufIndx++;
+
+                    Serial.println("");
+                    Serial.println("WROTE ENTRY BUFFER:");
+                    Serial.println("");
+
 
                      
 
@@ -178,7 +230,9 @@ void Tick_Payload () {
                     eBuff[eBufIndx] = currEntry;
                     eBufIndx++;
 
-                   
+                    Serial.println("");
+                    Serial.println("WROTE ENTRY BUFFER:");
+                    Serial.println("");
 
                 }
 
@@ -201,7 +255,7 @@ void Tick_Payload () {
                 //store metaData
             
             } else {
-                if ((currPageNum >= 1) && (currPageNum <= 32750)/*between pages 1 and 32,750 */) {
+                if ((currPageNum >= 1) && (currPageNum <= 32749)/*between pages 1 and 32,750 */) {
                     writeEntryBuffToFlash (currPageNum, eBuff, sizeof(eBuff));
                     eBufIndx = 0;
                     currPageNum++;
@@ -210,6 +264,9 @@ void Tick_Payload () {
                     eBufIndx++;
 
                     //store metaData
+                    Serial.println("");
+                    Serial.println("WROTE ENTRY BUFFER:");
+                    Serial.println("");
 
                 } else if (currPageNum >= 32750/*last page*/) {
                     writeEntryBuffToFlash (32750, eBuff, sizeof(eBuff));
@@ -219,6 +276,9 @@ void Tick_Payload () {
                     eBufIndx++;
 
                     //store metaData
+                    Serial.println("");
+                    Serial.println("WROTE ENTRY BUFFER:");
+                    Serial.println("");
 
                 }
 
@@ -240,7 +300,7 @@ void Tick_Payload () {
                     //store metaData
                 
                 } else {
-                    if (( (currPageNum >= 1) && (currPageNum <= 32750) ) && (eBufIndx > 0)/*between pages 1 and 32,766 && eBuffIndx > 0*/) {
+                    if (( (currPageNum >= 1) && (currPageNum <= 32749) ) && (eBufIndx > 0)/*between pages 1 and 32,766 && eBuffIndx > 0*/) {
                         writeEntryBuffToFlash (currPageNum, eBuff, sizeof(eBuff));
                         eBufIndx = 0;
                         currPageNum++;
@@ -251,6 +311,9 @@ void Tick_Payload () {
                         finalRead = true;
 
                         //store metaData
+                        Serial.println("");
+                    Serial.println("WROTE ENTRY BUFFER:");
+                    Serial.println("");
 
                     } else if (currPageNum >= 32750/*last page*/) {
                         writeEntryBuffToFlash (32750, eBuff, sizeof(eBuff));
@@ -262,6 +325,9 @@ void Tick_Payload () {
                         finalRead = true;
 
                         //store metaData
+                        Serial.println("");
+                    Serial.println("WROTE ENTRY BUFFER:");
+                    Serial.println("");
 
                     }
 
@@ -271,15 +337,45 @@ void Tick_Payload () {
             }
 
             //honk for 2 seconds every 30 seconds
-            delay(30000);
+            delay(1000);
             digitalWrite(CARHORNPIN, HIGH);
-            delay(2000);
+            delay(500);
             digitalWrite(  CARHORNPIN, LOW);
         break;
 
     }
 
     prevAltitude = currAltitude;
+
+    delay(10);
+    digitalWrite(OBLED, LOW);
+
+    Serial.println("");Serial.println("Post Tick stats:");
+    Serial.print("currAltitude: "); Serial.println(currAltitude);
+        Serial.print("prevAltitude: "); Serial.println(prevAltitude);
+        Serial.print("CO2 PPM: "); Serial.println(ppmCO2);
+        Serial.print("Current State: "); Serial.println(currentState);
+    Serial.print("Raw TimeStamp: "); Serial.println(getTimeStamp());
+     std::cout << "currEntry ~ Alt: " << currEntry.altitude_e
+            << "ft,  CO2: " <<  currEntry.co2PPM_e
+            << "PPM,  State: " << int(currEntry.currentState_e)
+            << ",  TS: "  << currEntry.timestamp_e
+            << ",  pyroEjected: "  << currEntry.pyroEjected_e << std::endl;
+            std::cout << "currMD ~ timeStamp: " << currMD.lastTimeStamp
+            << "ms,  State: " <<  int(currMD.currentState)
+            << ",  pageNum: " << currMD.currentPageNum
+            << ",  structCount: "  << int(currMD.structCount)
+            << ",  pyroArmed: "  << currMD.pyroArmed 
+            << ",  finalRead: "  << currMD.finalRead 
+            << std::endl;
+
+            Serial.print("Transition evaluated: ");
+    Serial.println(transition); 
+
+
+    Serial.println("Tick payload end");
+    Serial.println("");Serial.println("");Serial.println("");
+    
 
 }
 

@@ -30,6 +30,10 @@ void readAltitude(int16_t *alt) {
             charBuff[idx] = '\0';    //terminates the buffer with a null for atof (look for a null terminated string)
 
             *alt = (int16_t)strtol(charBuff, NULL, 10);  // Convert string to float
+
+            Serial.print("[Altimeter] Altitude reading: ");
+            Serial.println(*alt);
+
             
             idx = 0; //reset the index since we finished the line
             memset(charBuff, 0, sizeof(charBuff)); //clear the buffer

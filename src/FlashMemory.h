@@ -148,28 +148,28 @@ void writeEntryBuffToFlash(uint16_t page, Entry* sBuffer, size_t numEntries) {
   Entry* entryView = (Entry*)byteBuffer;
   Entry lastEntry = entryView[numEntries - 1];
 
-  Serial.print("numBytes: ");
-  Serial.println(numBytes);
+  // Serial.print("numBytes: ");
+  // Serial.println(numBytes);
 
-  Serial.println("Last Entry (fields):");
-  Serial.print("  Altitude: ");
-  Serial.print(lastEntry.altitude_e);
-  Serial.print(" ft,  CO2: ");
-  Serial.print(lastEntry.co2PPM_e);
-  Serial.print(" PPM,  Timestamp: ");
-  Serial.print(lastEntry.timestamp_e);
-  Serial.print(" ms,  State: ");
-  Serial.println(lastEntry.currentState_e);
+  // Serial.println("Last Entry (fields):");
+  // Serial.print("  Altitude: ");
+  // Serial.print(lastEntry.altitude_e);
+  // Serial.print(" ft,  CO2: ");
+  // Serial.print(lastEntry.co2PPM_e);
+  // Serial.print(" PPM,  Timestamp: ");
+  // Serial.print(lastEntry.timestamp_e);
+  // Serial.print(" ms,  State: ");
+  // Serial.println(lastEntry.currentState_e);
 
-  Serial.print("Last Entry (raw bytes): ");
-  uint8_t* lastStructPtr = (uint8_t*)&entryView[numEntries - 1];
-  for (int i = 0; i < sizeof(Entry); ++i) {
-    if (lastStructPtr[i] < 0x10) Serial.print("0"); // pad single-digit hex
-    Serial.print(lastStructPtr[i], HEX);
-    Serial.print(" ");
-  }
-  Serial.println();
-  Serial.println();
+  // Serial.print("Last Entry (raw bytes): ");
+  // uint8_t* lastStructPtr = (uint8_t*)&entryView[numEntries - 1];
+  // for (int i = 0; i < sizeof(Entry); ++i) {
+  //   if (lastStructPtr[i] < 0x10) Serial.print("0"); // pad single-digit hex
+  //   Serial.print(lastStructPtr[i], HEX);
+  //   Serial.print(" ");
+  // }
+  // Serial.println();
+  // Serial.println();
 
 
   writeDataToFlash(page, byteBuffer, numBytes);
@@ -235,16 +235,16 @@ void writeMetaDataToFlash(metaData* mData) {
  
   writeDataToFlash(32751, byteBuffer, sizeof(byteBuffer));
 
-  Serial.println("Raw byteBuffer contents:");
-  for (int i = 0; i < sizeof(metaData); i++) {
-    Serial.print("0x");
-    Serial.print(byteBuffer[i], HEX);
-    Serial.print(" ");
-  }
-  Serial.println();
+  // Serial.println("Raw byteBuffer contents:");
+  // for (int i = 0; i < sizeof(metaData); i++) {
+  //   Serial.print("0x");
+  //   Serial.print(byteBuffer[i], HEX);
+  //   Serial.print(" ");
+  // }
+  //Serial.println();
 
-  Serial.println ("Wrote MD succesfully??");
-  Serial.println("");
+  //Serial.println ("Wrote MD succesfully??");
+  //Serial.println("");
 }
 
 
@@ -265,13 +265,13 @@ void extractMetaData (metaData* mData) {
 
   readDataFromFlash (32751, extractorBuff, sizeof(extractorBuff));
 
-  Serial.println("Raw extractorBuff contents:");
-  for (int i = 0; i < sizeof(metaData); i++) {
-    Serial.print("0x");
-    Serial.print(extractorBuff[i], HEX);
-    Serial.print(" ");
-  }
-  Serial.println();
+  // Serial.println("Raw extractorBuff contents:");
+  // for (int i = 0; i < sizeof(metaData); i++) {
+  //   Serial.print("0x");
+  //   Serial.print(extractorBuff[i], HEX);
+  //   Serial.print(" ");
+  // }
+  // Serial.println();
 
   
   memcpy(mData, extractorBuff, sizeof(extractorBuff));

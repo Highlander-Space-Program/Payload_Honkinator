@@ -41,7 +41,10 @@ void setup() {
   initializeVariables();
 
   //Timestamp getTimeStamp
-  getTimeStamp();
+  timeStamp = getTimeStamp();
+
+  Serial.print("[Setup Done] Current state: ");
+  Serial.println(currentState);
  
   //  //Testing Stuff
   //  Serial.print ("Size of Entry strcuts: ");

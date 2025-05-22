@@ -72,37 +72,79 @@ uint32_t now;
 
 //Vairiable intializer
 void initializeVariables() {
+    Serial.println("[Init] Initializing Variables");
+
+
     timeStamp = getTimeStamp();
+    Serial.print("[Init] Timestamp: ");
+    Serial.println(timeStamp);
 
     readAltitude(&currAltitude);
     prevAltitude = currAltitude;
         
     getCO2(&ppmCO2);
 
-    if (checkMetaDataFlag() == true) { //Power cycle event (in flight or whenevr)
+    // if (checkMetaDataFlag() == true) { //Power cycle event (in flight or whenevr)
 
-        //Serial.println ("Recovering Meta Data");
-        //Serial.println("");
-        extractMetaData(&currMD);
+    //     //Serial.println ("Recovering Meta Data");
+    //     //Serial.println("");
+    //     extractMetaData(&currMD);
         
-        extractMetaData(&currMD);
-        timeStamp = currMD.lastTimeStamp;
-        currentState = RocketState(currMD.currentState);
-        currPageNum = currMD.currentPageNum;
-        eBufIndx = currMD.structCount;
-        eBufIndx++;
-        pyroArmed = currMD.pyroArmed; //check if pyroArmed;
-        finalRead = currMD.finalRead; //check if finalRead occurred;
+    //     timeStamp = currMD.lastTimeStamp;
+    //     currentState = RocketState(currMD.currentState);
+    //     currPageNum = currMD.currentPageNum;
+    //     eBufIndx = currMD.structCount;
+    //     eBufIndx++;
+    //     pyroArmed = currMD.pyroArmed; //check if pyroArmed;
+    //     finalRead = currMD.finalRead; //check if finalRead occurred;
 
-        currEntry = {currAltitude, ppmCO2, timeStamp, uint8_t(currentState), pyroEjected};
+    //     currEntry = {currAltitude, ppmCO2, timeStamp, uint8_t(currentState), pyroEjected};
+
+    //     Serial.print("[Init] Recovered state: ");
+    //     Serial.println(currentState);
+    //     Serial.print("[Init] Page #: ");
+    //     Serial.println(currPageNum);
+    //     Serial.print("[Init] CO2: ");
+    //     Serial.println(ppmCO2);
+    //     Serial.print("[Init] Altitude: ");
+    //     Serial.println(currAltitude);
 
 
-    } else {
+    //} else {
+        useMD = false;
         currMD = {0};
-        currMD = {timeStamp, uint8_t(currentState), uint16_t(currPageNum), eBufIndx, useMD, pyroArmed, finalRead};
-        currEntry = {currAltitude, ppmCO2, timeStamp, uint8_t(currentState)};
+        
+        currMD.lastTimeStamp = timeStamp;
+        currMD.currentState     = uint8_t(currentState);
+        currMD.currentPageNum = uint16_t(currPageNum);
+        currMD.structCount = eBufIndx;
+        currMD.useMetaData= true;
+        
+        
+        currEntry.altitude_e      = currAltitude;
+        currEntry.co2PPM_e        = ppmCO2;
+        currEntry.timestamp_e     = timeStamp;
+        currEntry.currentState_e  = uint8_t(currentState);
+        currEntry.pyroEjected_e   = pyroEjected;
 
-    }
+        Serial.println("[Init] No metadata found. Starting fresh.");
+        Serial.print("[Init] Initial State: ");
+        Serial.println(currentState);
+        Serial.print("[Init] Altitude: ");
+        Serial.println(currAltitude);
+        Serial.print("[Init] CO2: ");
+        Serial.println(ppmCO2);
+
+        Serial.println(currentState);
+        Serial.print("[Init] Page #: ");
+        Serial.println(currPageNum);
+        Serial.print("[Init] CO2: ");
+        Serial.println(ppmCO2);
+        Serial.print("[Init] Altitude: ");
+        Serial.println(currAltitude);
+
+
+    //}
 
 
 }
